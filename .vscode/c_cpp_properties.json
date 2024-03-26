@@ -1,0 +1,16 @@
+{
+  "configurations": [
+    {
+      "name": "linux-gcc-x64",
+      "compileCommands": "${workspaceFolder}/.vscode/compile_commands.json",
+      "includePath": [
+        "${workspaceFolder}/**"
+      ],
+      "cStandard": "${default}",
+      "cppStandard": "${default}",
+      "compilerPath": "/usr/bin/gcc",
+      "intelliSenseMode": "linux-gcc-x64"
+    }
+  ],
+  "version": 4
+}
