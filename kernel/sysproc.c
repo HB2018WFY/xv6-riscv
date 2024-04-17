@@ -89,3 +89,14 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64 sys_getprocs(void){
+  struct proc *p;
+  uint64 ans=0;
+  for(p = proc; p < &proc[NPROC]; p++){
+    acquire(&p->lock);
+    if(p->state == RUNNABLE)ans++;
+    release(&p->lock);
+  }
+  return ans;
+}
