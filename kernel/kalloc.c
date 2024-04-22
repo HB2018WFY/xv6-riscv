@@ -23,11 +23,23 @@ struct {
   struct run *freelist;
 } kmem;
 
+struct node{
+  struct node*next;
+  uint64 siz;
+};
+
+struct{
+  struct spinlock lock;
+  struct node *freelist;
+} malloc_mem;
 void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
   freerange(end, (void*)PHYSTOP);
+}
+void malloc_init(){
+
 }
 
 void
