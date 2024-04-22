@@ -83,7 +83,9 @@ kalloc(void)
 struct node{
   struct node*next;
   uint64 siz;
+  uint64 tag;//0-1
 };
+#define HEAD sizeof(node)
 struct{
   struct spinlock lock;
   struct node *freelist;
@@ -92,7 +94,7 @@ struct{
 void check(){
   acquire(&malloc_mem.lock);
   for(struct node *p=malloc_mem.freelist;p;p=p->next){
-    while(p->next&&(p+p->siz==p->next)){
+    while(p->next&&(p+p->siz==p->next)&&p->tag&&p->next->tag){
       struct node *nx=p->next;
       p->siz+=nx->siz;
       p->next=nx->next;
@@ -101,13 +103,25 @@ void check(){
   release(&malloc_mem.lock);
 }
 
-void free(void* pa,uint64 siz){
-  struct node *r;
+void new_free(void* pa){
+  struct node *r=0;
   if((uint64)pa < now_PHYSTOP || (uint64)pa >= MALLOCSTOP)
     panic("free");
-  memset(pa,0,siz);
-  r=(struct node *)pa;
-  r->siz=siz;
+  acquire(&malloc_mem.lock);
+  for(struct node *p=malloc_mem.freelist;p;p=p->next){
+    if(p==pa){
+      if(p->siz==0){
+        r=p;
+      }
+      else{
+        panic("free");
+      }
+    }
+  }
+  release(&malloc_mem.lock);
+  if(!r)panic("free");
+  memset(r,0,r->siz);
+  r->tag=1;
 
   acquire(&malloc_mem.lock);
   if(r<malloc_mem.freelist){
@@ -131,15 +145,20 @@ void malloc_freerange(void *pa_start, void *pa_end){
   acquire(&malloc_mem.lock);
   malloc_mem.freelist=(struct node*)pa_start;
   malloc_mem.freelist->siz=(char*)pa_end-(char*)pa_start;
+  malloc_mem.freelist->tag=1;
   release(&malloc_mem.lock);
 }
-void * malloc(uint64 siz){
+void * new_malloc(uint64 siz){
   struct node *r=0;
   acquire(&malloc_mem.lock);
   for(struct node *p=malloc_mem.freelist;p;p=p->next){
-    if(p->siz>=siz){
+    if(p->tag==1&&p->siz>=siz){
         r=p+p->siz-siz;
+        r->siz=siz;
+        r->tag=0;
+        r->next=p->next;
         p->siz-=siz;
+        p->next=r;
         break;
     }
   }
