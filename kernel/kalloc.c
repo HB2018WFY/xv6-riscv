@@ -23,23 +23,12 @@ struct {
   struct run *freelist;
 } kmem;
 
-struct node{
-  struct node*next;
-  uint64 siz;
-};
 
-struct{
-  struct spinlock lock;
-  struct node *freelist;
-} malloc_mem;
 void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
-  freerange(end, (void*)PHYSTOP);
-}
-void malloc_init(){
-
+  freerange(end, (void*)now_PHYSTOP);
 }
 
 void
@@ -60,7 +49,7 @@ kfree(void *pa)
 {
   struct run *r;
 
-  if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
+  if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= now_PHYSTOP)
     panic("kfree");
 
   // Fill with junk to catch dangling refs.
@@ -73,7 +62,6 @@ kfree(void *pa)
   kmem.freelist = r;
   release(&kmem.lock);
 }
-
 // Allocate one 4096-byte page of physical memory.
 // Returns a pointer that the kernel can use.
 // Returns 0 if the memory cannot be allocated.
@@ -91,4 +79,74 @@ kalloc(void)
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
+}
+struct node{
+  struct node*next;
+  uint64 siz;
+};
+struct{
+  struct spinlock lock;
+  struct node *freelist;
+} malloc_mem;
+
+void check(){
+  acquire(&malloc_mem.lock);
+  for(struct node *p=malloc_mem.freelist;p;p=p->next){
+    while(p->next&&(p+p->siz==p->next)){
+      struct node *nx=p->next;
+      p->siz+=nx->siz;
+      p->next=nx->next;
+    }
+  }
+  release(&malloc_mem.lock);
+}
+
+void free(void* pa,uint64 siz){
+  struct node *r;
+  if((uint64)pa < now_PHYSTOP || (uint64)pa >= MALLOCSTOP)
+    panic("free");
+  memset(pa,0,siz);
+  r=(struct node *)pa;
+  r->siz=siz;
+
+  acquire(&malloc_mem.lock);
+  if(r<malloc_mem.freelist){
+    r->next = malloc_mem.freelist;
+    malloc_mem.freelist = r;
+  } 
+  else{
+      for(struct node *p=malloc_mem.freelist;p;p=p->next){
+        if(p<=r&&(!p->next||p->next>r)){
+          r->next=p->next;
+          p->next=r;
+          break;
+        }
+    }
+  }
+  release(&malloc_mem.lock);
+  check();
+}
+void malloc_freerange(void *pa_start, void *pa_end){
+  memset((char*)pa_start,0,(char*)pa_end-(char*)pa_start);
+  acquire(&malloc_mem.lock);
+  malloc_mem.freelist=(struct node*)pa_start;
+  malloc_mem.freelist->siz=(char*)pa_end-(char*)pa_start;
+  release(&malloc_mem.lock);
+}
+void * malloc(uint64 siz){
+  struct node *r=0;
+  acquire(&malloc_mem.lock);
+  for(struct node *p=malloc_mem.freelist;p;p=p->next){
+    if(p->siz>=siz){
+        r=p+p->siz-siz;
+        p->siz-=siz;
+        break;
+    }
+  }
+  release(&malloc_mem.lock);
+  return (void*)r;
+}
+void malloc_init(){
+  initlock(&malloc_mem.lock,"malloc_mem");
+  malloc_freerange((void*)now_PHYSTOP,(void*)MALLOCSTOP);
 }
