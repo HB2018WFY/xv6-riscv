@@ -2,11 +2,12 @@
 #include "param.h"
 #include "memlayout.h"
 #include "riscv.h"
+#include "kalloc.h"
 #include "spinlock.h"
 #include "proc.h"
 #include "syscall.h"
 #include "defs.h"
-// call
+// cal
 // Fetch the uint64 at addr from the current process.
 int
 fetchaddr(uint64 addr, uint64 *ip)
@@ -102,8 +103,7 @@ extern uint64 sys_link(void);
 extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
 extern uint64 sys_getprocs(void);
-extern uint64 sys_new_malloc(void);
-extern uint64 sys_new_free(void);
+extern uint64 sys_test_malloc(void);
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
 static uint64 (*syscalls[])(void) = {
@@ -129,8 +129,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_getprocs]   sys_getprocs,
-[SYS_new_malloc] sys_new_malloc,
-[SYS_new_free] sys_new_free
+[SYS_test_malloc] sys_test_malloc
 };
 
 void

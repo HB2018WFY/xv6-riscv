@@ -100,9 +100,6 @@ uint64 sys_getprocs(void){
   }
   return ans;
 }
-void * sys_new_malloc(uint64 siz){
-  return new_malloc(siz);
-}
-void sys_free(void* p){
-  new_free(p);
+uint64 sys_test_malloc(void){
+  return test_malloc();
 }

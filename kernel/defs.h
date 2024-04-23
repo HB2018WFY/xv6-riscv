@@ -66,6 +66,7 @@ void            kinit(void);
 void*           new_malloc(uint64);
 void            new_free(void *);
 void            malloc_init(void);
+uint64          test_malloc(void);
 // log.c
 void            initlog(int, struct superblock*);
 void            log_write(struct buf*);
