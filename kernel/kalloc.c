@@ -232,7 +232,6 @@ uint64 test_malloc() {
       test_siz(siz);
     }
     test_siz((15<<20));
-    // 其他测试添加在此处
     printf("All tests passed\n");
     return 0;
 }
