@@ -101,7 +101,6 @@ void check(){
       p->siz+=nx->siz;
       p->next=nx->next;
     }
-   // printf("%p %d\n",p,p->siz);
   }
   release(&malloc_mem.lock);
 }
@@ -113,14 +112,12 @@ void debug(){
   release(&malloc_mem.lock);
 }
 void new_free(void* pa){
-  //printf("%s\n",pa);
   struct node *r=0;
   if((uint64)pa < now_PHYSTOP || (uint64)pa >= MALLOCSTOP){
     panic("free1");
   }
   acquire(&malloc_mem.lock);
   for(struct node *p=malloc_mem.freelist;p;p=p->next){
-    //printf("%p %p\n",(char*)p+HEAD,pa);
     if((char*)p+HEAD==pa){
       if(p->tag==0){
         r=p;
@@ -131,30 +128,11 @@ void new_free(void* pa){
     }
   }
   if(!r)panic("free3");
-  //memset(r+HEAD,0,r->siz-HEAD);
   r->tag=1;
   release(&malloc_mem.lock);
-  /*acquire(&malloc_mem.lock);
-  if(r<malloc_mem.freelist){
-    r->next = malloc_mem.freelist;
-    malloc_mem.freelist = r;
-  } 
-  else{
-      for(struct node *p=malloc_mem.freelist;p;p=p->next){
-        if(p<=r&&(!p->next||p->next>r)){
-          r->next=p->next;
-          p->next=r;
-          break;
-        }
-    }
-  }
-  release(&malloc_mem.lock);*/
-  //debug();
   check();
-  //debug();
 }
 void malloc_freerange(void *pa_start, void *pa_end){
- // printf("%p\n",pa_end);
   memset((char*)pa_start,0,(char*)pa_end-(char*)pa_start);
   acquire(&malloc_mem.lock);
   malloc_mem.freelist=(struct node*)pa_start;
@@ -168,27 +146,17 @@ void * new_malloc(uint64 siz){
   acquire(&malloc_mem.lock);
   for(struct node *p=malloc_mem.freelist;p;p=p->next){
     if(p->tag==1&&p->siz-HEAD>=HEAD+siz){
-        //printf("%p %p %p\n",p,(p->siz),(char*)p+(p->siz));
         r=(struct node*)((char*)p+((p->siz)-siz-HEAD));
-        //for(int i=0;i<=16;i++)
-        //printf("%p %p\n",&(r->siz),MALLOCSTOP);
         (r->siz)=(HEAD+siz);
         memset((char*)r+HEAD,0,r->siz-HEAD);
-        //printf("%d\n",r->siz);
-        //printf("%p\n",r);
         r->tag=0;  
         r->next=p->next;
-
         p->siz-=HEAD+siz;
         p->next=r;
-        //printf("%p\n",p);
-
         break;
     }
   }
   release(&malloc_mem.lock);
- // printf("%p\n",r+HEAD);
- //debug();
   return (void*)((char*)r+HEAD);
 }
 void malloc_init(){
